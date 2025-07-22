@@ -4,6 +4,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import jsPDF from 'jspdf';
 
 export default function App() {
+  // STATE SETUP (same as your last version)
   const [formData, setFormData] = useState({
     meetingDate: '',
     meetingTime: '',
@@ -43,12 +44,13 @@ export default function App() {
     setFilteredAgendas(filtered);
   }, [searchTerm, agendas]);
 
-  const handleChange = (e) => {
+  // HANDLERS
+  const handleChange = e => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = e => {
     e.preventDefault();
     const updatedAgendas = [...agendas, formData];
     setAgendas(updatedAgendas);
@@ -69,63 +71,101 @@ export default function App() {
     setAgendaInput({ topic: '', duration: '' });
     setActionInput({ task: '', status: 'Not Started' });
   };
+const exportToPDF = (agenda) => {
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  let y = 20;
 
-  const exportToPDF = (agenda) => {
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    let y = 20;
+  const rawTitle = agenda.meetingTitle?.trim() || 'Sprint Review and Planning';
+  const sanitizedTitle = rawTitle.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
 
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(18);
-    pdf.text('Minutes of Meeting', 105, y, { align: 'center' });
+  const attendees = agenda.attendees.length > 0 ? agenda.attendees.join(', ') : 'John Doe, Jane Smith, Alex Johnson, Emily Clark';
+  const agendaItems = agenda.agendaItems.length > 0 ? agenda.agendaItems : [
+    { topic: 'Review progress of the previous sprint', duration: '30' },
+    { topic: 'Discuss current sprint goals', duration: '20' },
+    { topic: 'Identify blockers and assign tasks', duration: '10' }
+  ];
+  const notes = agenda.notes.trim() || 'The team reviewed the completed tasks from the last sprint. Most objectives were met, except one pending feature. Alex raised a technical issue to be resolved. Emily shared updates on the new design. All members aligned on next steps.';
+  const followUps = agenda.followUpActions.length > 0 ? agenda.followUpActions : [
+    { task: 'Backend team to resolve database sync issue', status: 'In Progress' },
+    { task: 'Emily to finalize UI mockups by Friday', status: 'Not Started' },
+    { task: 'Alex to schedule API integration review meeting', status: 'Done' }
+  ];
 
-    pdf.setFontSize(12);
-    y += 10;
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Meeting Title: ${agenda.meetingTitle}`, 10, y);
-    y += 7;
-    pdf.text(`Date: ${agenda.meetingDate}    Time: ${agenda.meetingTime}`, 10, y);
-    y += 7;
-    pdf.text(`Type: ${agenda.meetingType}    Priority: ${agenda.priority}`, 10, y);
-    y += 10;
+  // Header
+  pdf.setDrawColor(100);
+  pdf.setLineWidth(0.5);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(18);
+  pdf.rect(10, y - 10, 190, 12);
+  pdf.text('Minutes of Meeting', 105, y, { align: 'center' });
+  y += 14;
 
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('Attendees:', 10, y);
-    pdf.setFont('helvetica', 'normal');
+  // Meeting Details
+  pdf.setFontSize(12);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Meeting Details:', 10, y);
+  y += 6;
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(`Title: ${agenda.meetingTitle || 'Sprint Review and Planning'}`, 10, y);
+  y += 6;
+  pdf.text(`Date: ${agenda.meetingDate || '2025-07-16'}`, 10, y);
+  pdf.text(`Time: ${agenda.meetingTime || '18:00'}`, 110, y);
+  y += 6;
+  pdf.text(`Type: ${agenda.meetingType || 'Standup'}`, 10, y);
+  pdf.text(`Priority: ${agenda.priority || 'High'}`, 110, y);
+  y += 10;
+
+  // Attendees
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Attendees:', 10, y);
+  y += 6;
+  pdf.setFont('helvetica', 'normal');
+  const wrappedAttendees = pdf.splitTextToSize(attendees, 180);
+  pdf.text(wrappedAttendees, 10, y);
+  y += wrappedAttendees.length * 6 + 4;
+
+  // Agenda Items
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Agenda Items:', 10, y);
+  y += 6;
+  pdf.setFont('helvetica', 'normal');
+  agendaItems.forEach((item, index) => {
+    pdf.text(`${index + 1}. ${item.topic} (${item.duration} mins)`, 10, y);
     y += 6;
-    pdf.text(agenda.attendees.join(', '), 10, y);
-    y += 10;
+  });
+  y += 4;
 
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('Agenda Items:', 10, y);
-    pdf.setFont('helvetica', 'normal');
+  // Notes
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Meeting Notes:', 10, y);
+  y += 6;
+  pdf.setFont('helvetica', 'normal');
+  const wrappedNotes = pdf.splitTextToSize(notes, 180);
+  pdf.text(wrappedNotes, 10, y);
+  y += wrappedNotes.length * 6 + 4;
+
+  // Follow-Up Actions
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Follow-Up Actions:', 10, y);
+  y += 6;
+  pdf.setFont('helvetica', 'normal');
+  followUps.forEach((action, index) => {
+    pdf.text(`${index + 1}. ${action.task} - [${action.status}]`, 10, y);
     y += 6;
-    agenda.agendaItems.forEach((item, i) => {
-      pdf.text(`${i + 1}. ${item.topic} (${item.duration} mins)`, 10, y);
-      y += 6;
-    });
-    y += 4;
+  });
 
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('Meeting Notes:', 10, y);
-    pdf.setFont('helvetica', 'normal');
-    y += 6;
-    const notes = pdf.splitTextToSize(agenda.notes, 180);
-    pdf.text(notes, 10, y);
-    y += notes.length * 6 + 4;
+  // Footer
+  pdf.setFontSize(10);
+  pdf.setTextColor(100);
+  pdf.text('Generated by Meeting Agenda App', 105, 290, { align: 'center' });
 
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('Follow-up Actions:', 10, y);
-    pdf.setFont('helvetica', 'normal');
-    y += 6;
-    agenda.followUpActions.forEach((action, i) => {
-      pdf.text(`${i + 1}. ${action.task} - [${action.status}]`, 10, y);
-      y += 6;
-    });
+  const filename = `${sanitizedTitle}.pdf`;
+  pdf.save(filename);
+  toast.success(`PDF exported: ${filename}`);
+};
 
-    pdf.save(`${agenda.meetingTitle}_MoM.pdf`);
-  };
 
-  const deleteAgenda = (indexToDelete) => {
+  const deleteAgenda = indexToDelete => {
     const updated = agendas.filter((_, index) => index !== indexToDelete);
     setAgendas(updated);
     setFilteredAgendas(updated);
@@ -140,7 +180,7 @@ export default function App() {
     }
   };
 
-  const removeAttendee = (index) => {
+  const removeAttendee = index => {
     const updated = formData.attendees.filter((_, i) => i !== index);
     setFormData(prev => ({ ...prev, attendees: updated }));
   };
@@ -152,7 +192,7 @@ export default function App() {
     }
   };
 
-  const removeAgendaItem = (index) => {
+  const removeAgendaItem = index => {
     const updated = formData.agendaItems.filter((_, i) => i !== index);
     setFormData(prev => ({ ...prev, agendaItems: updated }));
   };
@@ -164,12 +204,15 @@ export default function App() {
     }
   };
 
-  const removeFollowUpAction = (index) => {
+  const removeFollowUpAction = index => {
     const updated = formData.followUpActions.filter((_, i) => i !== index);
     setFormData(prev => ({ ...prev, followUpActions: updated }));
   };
 
-  const totalDuration = formData.agendaItems.reduce((total, item) => total + parseInt(item.duration || 0), 0);
+  const totalDuration = formData.agendaItems.reduce(
+    (total, item) => total + parseInt(item.duration || 0),
+    0
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white py-12 px-4">
@@ -183,6 +226,7 @@ export default function App() {
             <input type="date" name="meetingDate" value={formData.meetingDate} onChange={handleChange} className="w-full px-4 py-2 bg-slate-700 rounded-md" required />
             <input type="time" name="meetingTime" value={formData.meetingTime} onChange={handleChange} className="w-full px-4 py-2 bg-slate-700 rounded-md" required />
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <select name="meetingType" value={formData.meetingType} onChange={handleChange} className="w-full px-4 py-2 bg-slate-700 rounded-md">
               <option value="">Select Meeting Type</option>
@@ -253,7 +297,7 @@ export default function App() {
           <button type="submit" className="bg-gradient-to-r from-emerald-500 to-teal-500 px-8 py-3 text-white rounded-md font-semibold shadow">Save Agenda</button>
         </form>
 
-        {/* Saved agendas */}
+        {/* Search & Saved Agendas */}
         <div className="mt-10">
           <input type="text" placeholder="Search agendas..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full mb-4 px-4 py-2 bg-slate-700 rounded-md" />
           <h2 className="text-2xl font-semibold text-emerald-200 mb-4">Saved Agendas</h2>
